@@ -6,8 +6,9 @@ engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine)
 
 def log_event(db, kind: str, payload: dict, status: str = "ok"):
+    import json
     db.execute(
         text("INSERT INTO events(kind, payload, status) VALUES (:k, :p::jsonb, :s)"),
-        {"k": kind, "p": payload, "s": status},
+        {"k": kind, "p": json.dumps(payload), "s": status},
     )
     db.commit()
