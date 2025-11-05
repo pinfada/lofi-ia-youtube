@@ -1,0 +1,12 @@
+apiVersion: 1
+datasources:
+  - name: Postgres
+    type: postgres
+    access: proxy
+    url: db:5432
+    database: lofi
+    user: lofi
+    jsonData:
+      sslmode: "disable"
+    secureJsonData:
+      password: lofi

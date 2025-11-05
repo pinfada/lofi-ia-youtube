@@ -1,0 +1,7 @@
+celery==5.4.0
+redis==5.0.8
+requests==2.32.3
+python-dotenv==1.0.1
+google-api-python-client==2.147.0
+google-auth==2.35.0
+google-auth-oauthlib==1.2.1

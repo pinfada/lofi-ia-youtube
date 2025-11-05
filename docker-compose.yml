@@ -1,0 +1,61 @@
+version: "3.9"
+
+services:
+  api:
+    build: ./api
+    container_name: lofi_api
+    env_file: .env
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api:/app
+      - ./data:/data
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build: ./worker
+    container_name: lofi_worker
+    env_file: .env
+    depends_on:
+      - api
+      - db
+      - redis
+    volumes:
+      - ./api:/app
+      - ./data:/data
+    command: celery -A tasks worker --loglevel=INFO -Q default
+
+  redis:
+    image: redis:7
+    container_name: lofi_redis
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:16
+    container_name: lofi_db
+    environment:
+      POSTGRES_DB: lofi
+      POSTGRES_USER: lofi
+      POSTGRES_PASSWORD: lofi
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./api/migrations.sql:/docker-entrypoint-initdb.d/migrations.sql
+    ports:
+      - "5432:5432"
+
+  grafana:
+    build: ./grafana
+    container_name: lofi_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - db
+
+volumes:
+  pgdata:

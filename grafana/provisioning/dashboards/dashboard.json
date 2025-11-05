@@ -1,0 +1,18 @@
+{
+  "annotations": {"list": []},
+  "panels": [
+    {
+      "type": "table",
+      "title": "Derniers events",
+      "datasource": "Postgres",
+      "targets": [{
+        "format": "table",
+        "rawSql": "SELECT id, created_at, kind, status FROM events ORDER BY id DESC LIMIT 100",
+        "refId": "A"
+      }]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "title": "LoFi Pipeline"
+}
