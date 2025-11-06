@@ -21,7 +21,9 @@ def generate_and_publish():
         generate_image_16x9("lofi cafe at night, anime style, warm lights, rain, 16:9", img_path)
 
         # 2) Animation loop (ou utiliser un loop pre-existant)
-        loop_path = LOOP_VIDEO  # sinon: animate_to_loop(img_path, "/data/loop.mp4", 6)
+        loop_path = LOOP_VIDEO
+        if not os.path.exists(loop_path):
+            loop_path = animate_to_loop(img_path, "/data/loop.mp4", 6)
 
         # 3) Playlist audio
         playlist_file, tracks = select_audio_playlist(AUDIO_DIR, 80, 120)
