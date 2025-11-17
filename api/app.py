@@ -3,7 +3,7 @@ FastAPI application for LoFi IA YouTube automated video generation.
 """
 from datetime import datetime
 from typing import List
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy import text
@@ -23,6 +23,16 @@ from settings import REDIS_URL
 from logger import app_logger, log_with_context
 from middleware import RateLimitMiddleware, RequestLoggingMiddleware, CORSSecurityMiddleware
 from metrics import get_metrics
+from auth import (
+    LoginRequest,
+    Token,
+    authenticate_user,
+    create_tokens,
+    get_current_user,
+    get_current_active_user,
+    require_admin,
+    TokenData,
+)
 
 # Initialize FastAPI with rich documentation
 app = FastAPI(
@@ -245,6 +255,103 @@ def metrics():
         Prometheus metrics in text format
     """
     return get_metrics()
+
+
+@app.post(
+    "/auth/login",
+    response_model=Token,
+    summary="Login",
+    description="Authenticate and get JWT tokens",
+    tags=["Authentication"],
+)
+def login(credentials: LoginRequest):
+    """
+    Authenticate user and return JWT tokens.
+
+    Args:
+        credentials: Login credentials (username + password)
+
+    Returns:
+        Token with access and refresh tokens
+
+    Raises:
+        HTTPException: If authentication fails
+    """
+    user = authenticate_user(credentials.username, credentials.password)
+    if not user:
+        log_with_context(
+            app_logger,
+            "warning",
+            "Failed login attempt",
+            username=credentials.username
+        )
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    tokens = create_tokens(user)
+    log_with_context(
+        app_logger,
+        "info",
+        "User logged in",
+        username=user.username,
+        role=user.role
+    )
+
+    return tokens
+
+
+@app.get(
+    "/auth/me",
+    response_model=TokenData,
+    summary="Get Current User",
+    description="Get information about the current authenticated user",
+    tags=["Authentication"],
+)
+async def read_users_me(current_user: TokenData = Depends(get_current_active_user)):
+    """
+    Get current user information.
+
+    Args:
+        current_user: Current authenticated user
+
+    Returns:
+        TokenData with user information
+    """
+    return current_user
+
+
+@app.post(
+    "/auth/refresh",
+    response_model=Token,
+    summary="Refresh Token",
+    description="Refresh access token using refresh token",
+    tags=["Authentication"],
+)
+async def refresh_token(current_user: TokenData = Depends(get_current_user)):
+    """
+    Refresh access token.
+
+    Args:
+        current_user: Current user from token
+
+    Returns:
+        New token pair
+    """
+    # In production, validate refresh token type and revocation
+    # For now, just create new tokens
+    from auth import fake_users_db, UserInDB
+
+    user_dict = fake_users_db.get(current_user.username)
+    if not user_dict:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    user = UserInDB(**user_dict)
+    tokens = create_tokens(user)
+
+    return tokens
 
 
 @app.on_event("startup")

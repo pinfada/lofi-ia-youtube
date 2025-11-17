@@ -16,6 +16,13 @@ Pillow==10.4.0
 prometheus-client==0.20.0
 pydantic-settings==2.5.2
 
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# CLI
+click==8.1.7
+
 # Testing dependencies
 pytest==8.3.3
 pytest-cov==5.0.0
