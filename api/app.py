@@ -21,6 +21,8 @@ from schemas import (
 )
 from settings import REDIS_URL
 from logger import app_logger, log_with_context
+from middleware import RateLimitMiddleware, RequestLoggingMiddleware, CORSSecurityMiddleware
+from metrics import get_metrics
 
 # Initialize FastAPI with rich documentation
 app = FastAPI(
@@ -30,6 +32,11 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Add middleware (order matters - first added is executed last)
+app.add_middleware(CORSSecurityMiddleware, allowed_origins=["*"])
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(RateLimitMiddleware, redis_url=REDIS_URL, requests_per_minute=60)
 
 
 # Exception handlers
@@ -221,6 +228,23 @@ def list_events(
             error=str(e),
         )
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@app.get(
+    "/metrics",
+    summary="Prometheus Metrics",
+    description="Prometheus metrics endpoint for monitoring",
+    tags=["Monitoring"],
+    include_in_schema=False,  # Hide from OpenAPI docs
+)
+def metrics():
+    """
+    Expose Prometheus metrics.
+
+    Returns:
+        Prometheus metrics in text format
+    """
+    return get_metrics()
 
 
 @app.on_event("startup")
