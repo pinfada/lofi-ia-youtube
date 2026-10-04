@@ -2,6 +2,7 @@
 Middleware components for the LoFi IA YouTube API.
 """
 import time
+import uuid
 import redis
 from typing import Callable
 from fastapi import Request, Response, HTTPException
@@ -11,6 +12,7 @@ from datetime import datetime
 
 from logger import app_logger, log_with_context
 from settings import REDIS_URL
+from metrics import track_request_metrics, rate_limit_hits_total
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -91,20 +93,22 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         client_ip = self.get_client_ip(request)
         key = f"rate_limit:{client_ip}"
-        current_time = int(time.time())
+        now = time.time()
+        current_time = int(now)
 
         try:
             # Get current request count
             pipe = self.redis_client.pipeline()
 
             # Remove old entries outside the time window
-            pipe.zremrangebyscore(key, 0, current_time - self.window_size)
+            pipe.zremrangebyscore(key, 0, now - self.window_size)
 
             # Count requests in current window
             pipe.zcard(key)
 
             # Add current request
-            pipe.zadd(key, {str(current_time): current_time})
+            # Members must be unique, otherwise requests within the same second collapse into one
+            pipe.zadd(key, {f"{now}:{uuid.uuid4().hex}": now})
 
             # Set expiration
             pipe.expire(key, self.window_size)
@@ -124,6 +128,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     path=request.url.path
                 )
 
+                rate_limit_hits_total.labels(endpoint=request.url.path).inc()
                 return JSONResponse(
                     status_code=429,
                     content={
@@ -216,6 +221,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 process_time_ms=round(process_time * 1000, 2),
                 client_ip=client_ip
             )
+
+            # Use the route template (not the raw path) to keep label cardinality bounded
+            route = request.scope.get("route")
+            endpoint = getattr(route, "path", "unmatched")
+            track_request_metrics(method, endpoint, response.status_code, process_time)
 
             # Add processing time header
             response.headers["X-Process-Time"] = str(round(process_time * 1000, 2))

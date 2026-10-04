@@ -8,7 +8,7 @@ SessionLocal = sessionmaker(bind=engine)
 def log_event(db, kind: str, payload: dict, status: str = "ok"):
     import json
     db.execute(
-        text("INSERT INTO events(kind, payload, status) VALUES (:k, :p::jsonb, :s)"),
-        {"k": kind, "p": json.dumps(payload), "s": status},
+        text("INSERT INTO events(kind, payload, status) VALUES (:k, CAST(:p AS JSONB), :s)"),
+        {"k": kind, "p": json.dumps(payload, default=str), "s": status},
     )
     db.commit()

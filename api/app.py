@@ -105,16 +105,17 @@ def health():
     }
 
     # Check database
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         db.execute(text("SELECT 1"))
-        db.close()
         health_status["database"] = "ok"
         app_logger.info("Database health check passed")
     except SQLAlchemyError as e:
         health_status["database"] = "error"
         health_status["status"] = "degraded"
         log_with_context(app_logger, "error", "Database health check failed", error=str(e))
+    finally:
+        db.close()
 
     # Check Redis
     try:
@@ -202,13 +203,12 @@ def list_events(
     Raises:
         HTTPException: If database query fails
     """
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         rows = db.execute(
             text("SELECT id, created_at, kind, status FROM events ORDER BY id DESC LIMIT :lim"),
             {"lim": limit},
         ).fetchall()
-        db.close()
 
         events = [dict(r._mapping) for r in rows]
         log_with_context(
@@ -228,6 +228,8 @@ def list_events(
             error=str(e),
         )
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+    finally:
+        db.close()
 
 
 @app.get(
