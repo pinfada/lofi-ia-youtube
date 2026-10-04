@@ -58,6 +58,8 @@ def select_audio_playlist(
     playlist_path.parent.mkdir(parents=True, exist_ok=True)
     with playlist_path.open("w", encoding="utf-8") as fh:
         for track in tracks:
-            fh.write(f"file '{track.as_posix()}'\n")
+            # ffmpeg concat syntax: single quotes inside a quoted path are written as '\''
+            escaped = track.resolve().as_posix().replace("'", "'\\''")
+            fh.write(f"file '{escaped}'\n")
 
     return str(playlist_path), [track.name for track in tracks]

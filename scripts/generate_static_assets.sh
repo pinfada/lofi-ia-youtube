@@ -21,7 +21,7 @@ echo "============================================================"
 echo "Creating intro video: $STATIC_DIR/intro.mp4"
 ffmpeg -f lavfi -i color=c=black:s=1920x1080:d=3 \
     -vf "drawtext=text='Lo-Fi IA YouTube':fontsize=72:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf,fade=t=in:st=0:d=1" \
-    -pix_fmt yuv420p -t 3 -y "$STATIC_DIR/intro.mp4" 2>/dev/null
+    -r 30 -c:v libx264 -pix_fmt yuv420p -t 3 -y "$STATIC_DIR/intro.mp4" 2>/dev/null
 
 echo "✓ Intro video created (3s)"
 
@@ -29,7 +29,7 @@ echo "✓ Intro video created (3s)"
 echo "Creating outro video: $STATIC_DIR/outro.mp4"
 ffmpeg -f lavfi -i color=c=black:s=1920x1080:d=3 \
     -vf "drawtext=text='Subscribe for more Lo-Fi beats!':fontsize=56:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2:fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf,fade=t=out:st=2:d=1" \
-    -pix_fmt yuv420p -t 3 -y "$STATIC_DIR/outro.mp4" 2>/dev/null
+    -r 30 -c:v libx264 -pix_fmt yuv420p -t 3 -y "$STATIC_DIR/outro.mp4" 2>/dev/null
 
 echo "✓ Outro video created (3s)"
 
